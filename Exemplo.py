@@ -1,12 +1,10 @@
 # Importando as classes necessárias
-from bibgolfadas.bibgolfadas import Well, FOWMModel, LSTMModel, ANNModel#, MetodoProprio, Controlador
-import numpy as np
-from scipy.interpolate import interp1d
 import matplotlib.pyplot as plt
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler
+
+import bibgolfadas.bibgolfadas as bibgolfadas
+from bibgolfadas.Tools import transformar_entrada, normalizar_zscore, generate_dynamic_input
+import numpy as np
 import pandas as pd
-from bibgolfadas.bibgolfadas import transformar_entrada, normalizar_zscore
 
 # Passo 1: Definir os parâmetros do poço
 well_params = {
@@ -45,7 +43,7 @@ well_params = {
 }
 
 # Passo 2: Inicializar o poço
-poço = Well()
+poço = bibgolfadas.Well()
 
 # Passo 3: Adicionar um modelo FOWM ao poço
 poço.adicionar_modelo(nome_modelo='FOWM', modelo_tipo='FOWM', params=well_params)
@@ -61,19 +59,12 @@ Wgc = GL * fat_Wgc # Gaslift inflow [kg/s]
 Ps = 1013250  # Separator pressure [Pa]
 Pr = 2.25e7   # Reservoir Pressure [Pa]
 
-# Gerando o vetor de choke para simulação de forma mais eficiente
-choke_samp = np.array([5,5,8,10,10,11,12,12,12,13,15,14,14,13,17,15,18,18,20,20,19,19,19,21,17,15,13,15,17])*0.01
-time_step = 10  # horas cada
-tf_sim = choke_samp.size * time_step * 3600
-tArray_sim = np.arange(0, tf_sim)
-repetitions = int(time_step * 3600)  # número de segundos em cada intervalo de time_step horas
-choke_sim = np.repeat(choke_samp, repetitions)
+# Gerar a função de entrada dinâmica da choke
+z_samp = [5,5,8,10,10,11,12,12,12,13,15,14,14,13,17,15,18,18,20,20,19,19,19,21,17,15,13,15,17]
+time_step = 10 # horas
 
-# Criação da função de interpolação usando dados otimizados
-z_interpolate_sim = interp1d(tArray_sim, choke_sim, kind='nearest', fill_value="extrapolate")
-def z_sim(t):
-    return z_interpolate_sim(t)
-
+u_sim, tArray_sim = generate_dynamic_input([z_samp,z_samp], time_step)
+z_sim = u_sim[0]
 # Configurando o vetor de entrada para teste
 X_test = [tArray_sim, z_sim, Wgc, Pr, Ps]
 
@@ -81,6 +72,7 @@ X_test = [tArray_sim, z_sim, Wgc, Pr, Ps]
 modelo_fowm = poço.get_modelo('FOWM')
 x_, y_ = modelo_fowm.model.predict(X_test, ['t','z','Ppdg'])
 
+# Utiliza o modelpqpinicio do you
 X_train = pd.DataFrame(data={'z': y_['z']}, index=y_['t'])
 Y_train = pd.DataFrame(data={'Ppdg': y_['Ppdg']}, index=y_['t'])
 
@@ -114,6 +106,7 @@ X_train_normalizado = np.reshape(X_train_normalizado,(n_samples, 100, 1))
 
 poço.adicionar_modelo(nome_modelo='ModeloLSTM1', modelo_tipo='LSTM', **lstm_config_1)
 # Treina o modelo LSTM
+poço.fit('ModeloLSTM1', X_train_normalizado, Y_train_normalizado, X_train_normalizado, Y_train_normalizado)
 poço.fit('ModeloLSTM1', X_train_normalizado, Y_train_normalizado, X_train_normalizado, Y_train_normalizado)
 y_predito = poço.get_modelo('ModeloLSTM1').model.predict(X_train_normalizado)  # Predições do modelo
 

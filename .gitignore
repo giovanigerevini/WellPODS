@@ -1,0 +1,71 @@
+# Sistema
+.DS_Store
+Thumbs.db
+
+# Logs
+logs
+*.log
+npm-debug.log*
+
+# Dependências
+/node_modules
+/.pnp
+.pnp.js
+
+# Compilação
+dist/
+build/
+out/
+tmp/
+
+# Ambiente
+.env
+.env.local
+.env.*.local
+
+# Configurações do IDE
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# Arquivos temporários
+*.tmp
+*.temp
+
+# Arquivos do sistema operacional
+*.swp
+*.swo
+*.bak
+
+# Cobertura de testes
+coverage/
+
+# Diretórios e arquivos gerados
+*.log
+*.lock
+*.sql
+*.sqlite
+
+# Arquivos do MacOS
+.AppleDouble
+.LSOverride
+
+# Arquivos específicos de frameworks
+/target/
+!.mvn/wrapper/maven-wrapper.jar
+!.gradle/wrapper/gradle-wrapper.jar
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+*.egg
+*.egg-info/
+*.eggs/
+*.manifest
+*.spec

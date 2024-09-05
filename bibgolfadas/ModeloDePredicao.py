@@ -34,6 +34,7 @@ class ModeloDePredicao(ABC):
         Método abstrato para construir a arquitetura do modelo.
         """
         pass
+    
 
     @abstractmethod
     def train(self, X_train, y_train, X_val=None, y_val=None):
@@ -53,6 +54,13 @@ class ModeloDePredicao(ABC):
     def predict(self, X):
         """
         Método abstrato para realizar predições usando o modelo treinado.
+        """
+        pass
+    
+    @abstractmethod
+    def build_bifurcation(self):
+        """
+        Método abstrato para construir o diagrama de bifurcação do modelo.
         """
         pass
 
@@ -109,6 +117,15 @@ class FOWMModel(ModeloDePredicao):
             raise ValueError("O modelo deve ser treinado antes de realizar predições.")
         x_solution, _ = self.model.predict(*X)
         return x_solution
+
+    def build_bifurcation(self):
+        """
+        Método para construir o diagrama de bifurcação.
+        """
+        if not self.trained:
+            raise ValueError("O modelo deve ser treinado antes de realizar predições.")
+        ssp_cont, bifurcation_curve, fowm_Hopf, choke_Hopff = self.model.build_bifurcation()
+        return ssp_cont, bifurcation_curve, fowm_Hopf, choke_Hopff
 
     def save(self, path):
         """
@@ -169,6 +186,12 @@ class LSTMModel(ModeloDePredicao):
         if not self.trained:
             raise ValueError("O modelo deve ser treinado antes de realizar predições.")
         return self.model.predict(X)
+
+    def build_bifurcation(self):
+        """
+        Método para construir o diagrama de bifurcação.
+        """
+        raise NotImplementedError("Função objetivo não implementada!")
 
     def save(self, path):
         """
@@ -249,6 +272,12 @@ class ANNModel(ModeloDePredicao):
         if not self.trained:
             raise ValueError("O modelo deve ser treinado antes de realizar predições.")
         return self.model.predict(X)
+
+    def build_bifurcation(self):
+        """
+        Método para construir o diagrama de bifurcação.
+        """
+        raise NotImplementedError("Função objetivo não implementada!")
 
     def save(self, path):
         """

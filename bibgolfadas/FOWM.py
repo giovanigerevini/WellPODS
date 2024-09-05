@@ -1,5 +1,7 @@
 import numpy as np
 from scipy.integrate import odeint # Import odeint
+from PyDSTool import *
+
 
 class FOWM:
     """
@@ -186,7 +188,6 @@ class FOWM:
         if internal_vars_requested is None:
             internal_vars_requested = []
 
-
         def Velocity_disturb_collect(ssp, t, z_input, Wgc_input, Pr_input, Ps_input):
             # Read state space points
             x1, x2, x3, x4, x5, x6 = ssp  
@@ -255,6 +256,140 @@ class FOWM:
 
         return x_solution, internal_vars
 
-    def bifurcation():
-        pass
+    def build_bifurcation(self):
+        """
+        Realiza uma análise de bifurcação do modelo FOWM para identificar mudanças qualitativas
+        no comportamento dinâmico do sistema em função do parâmetro de controle.
 
+        Returns:
+            ssp_cont: Soluções estacionárias do modelo durante a bifurcação.
+            fowm_curve: Dados da curva de bifurcação.
+            fowm_Hopf: Dados relacionados ao ponto de Hopf bifurcação, se aplicável.
+            hopf_params: Parâmetros associados aos pontos de Hopf.
+        """
+        # Verifica se todos os parâmetros de ajuste foram definidos
+        self.check_required_adjust_params()
+
+        # Definir os nomes e valores dos parâmetros do modelo
+        parameters_name = [
+            'R', 'g', 'T', 'M', 'Rol', 'ALFAgw', 'Romres',
+            'L', 'Lt', 'La', 'D', 'Dt', 'Da', 'teta', 'Hvgl', 'Hpdg', 'Ht', 'A', 'Vt', 'Va',
+            'RT_over_M', 'fat_Wgc', 'g_sin_teta_over_A',
+            'Romres_g_deltaGlPdg', 'Romres_g_deltaWellPdg', 'anular_pressure',
+            'mlstill', 'Cg', 'Cout', 'Veb', 'E', 'Kw', 'Ka', 'Kr', 'Vr',
+            'Ck', 'GL', 'Ps', 'Pr'
+        ]
+
+        parameters = [
+            self.R, self.g, self.T, self.M, self.Rol, self.ALFAgw, self.Romres,
+            self.L, self.Lt, self.La, self.D, self.Dt, self.Da, self.teta, self.Hvgl, self.Hpdg, self.Ht, self.A, self.Vt, self.Va,
+            self.RT_over_M, self.fat_Wgc, self.g_sin_teta_over_A,
+            self.Romres_g_deltaGlPdg, self.Romres_g_deltaWellPdg, self.anular_pressure,
+            self.mlstill, self.Cg, self.Cout, self.Veb, self.E, self.Kw, self.Ka, self.Kr, self.Vr,
+            self.Ck, self.GL, self.Ps, self.Pr
+        ]
+
+        parameters_dict = dict(zip(parameters_name, parameters))
+
+        icdict = {
+            'x1': self.ssp0[0], 'x2': self.ssp0[1], 'x3': self.ssp0[2],
+            'x4': self.ssp0[3], 'x5': self.ssp0[4], 'x6': self.ssp0[5]
+        }
+
+        # Definir as especificações do modelo
+        symbolFOWM = {
+            'z'     : (['x1','x2','x3','x4','x5','x6'],'Ck*0.01'), \
+            'Wgc'   : (['x1','x2','x3','x4','x5','x6'],'GL*fat_Wgc'), \
+            'Peb'   : (['x1','x2','x3','x4','x5','x6'],'x1*RT_over_M/Veb'), \
+            'Prt'   : (['x1','x2','x3','x4','x5','x6'],'x2*RT_over_M/(Vr-(x3+mlstill)/Rol)'), \
+            'Prb'   : (['x1','x2','x3','x4','x5','x6'],'Prt(x1,x2,x3,x4,x5,x6) + (x3 + mlstill)*g_sin_teta_over_A'), \
+            'ALFAg' : (['x1','x2','x3','x4','x5','x6'],'x2/(x2 + x3)'), \
+            'Wout'  : (['x1','x2','x3','x4','x5','x6'],'Cout*z(x1,x2,x3,x4,x5,x6)*sqrt((Rol*(max(0,Prt(x1,x2,x3,x4,x5,x6) - Ps))))'), \
+            'Wlout' : (['x1','x2','x3','x4','x5','x6'],'(1 - ALFAg(x1,x2,x3,x4,x5,x6))*Wout(x1,x2,x3,x4,x5,x6)'), \
+            'Wgout' : (['x1','x2','x3','x4','x5','x6'],'ALFAg(x1,x2,x3,x4,x5,x6)*Wout(x1,x2,x3,x4,x5,x6)'), \
+            'Wg'    : (['x1','x2','x3','x4','x5','x6'],'Cg*(max(0,Peb(x1,x2,x3,x4,x5,x6) - Prb(x1,x2,x3,x4,x5,x6)))'), \
+            'Vgt'   : (['x1','x2','x3','x4','x5','x6'],'Vt - x6/Rol'),  \
+            'ROgt'  : (['x1','x2','x3','x4','x5','x6'],'x5/Vgt(x1,x2,x3,x4,x5,x6)'),     \
+            'ROmt'  : (['x1','x2','x3','x4','x5','x6'],'(x5 + x6)/Vt'),  \
+            'Ptt'   : (['x1','x2','x3','x4','x5','x6'],'ROgt(x1,x2,x3,x4,x5,x6)*RT_over_M'),		\
+            'Ptb'   : (['x1','x2','x3','x4','x5','x6'],'Ptt(x1,x2,x3,x4,x5,x6) + ROmt(x1,x2,x3,x4,x5,x6)*g*Hvgl'),	\
+            'Ppdg'  : (['x1','x2','x3','x4','x5','x6'],'Ptb(x1,x2,x3,x4,x5,x6) + Romres_g_deltaGlPdg'),	\
+            'Pbh'   : (['x1','x2','x3','x4','x5','x6'],'Ppdg(x1,x2,x3,x4,x5,x6) + Romres_g_deltaWellPdg') ,   \
+            'ALFAgt': (['x1','x2','x3','x4','x5','x6'],'x5/(x6 + x5)')  ,      \
+            'Wwh'   : (['x1','x2','x3','x4','x5','x6'],'Kw*sqrt(Rol*(max(0,Ptt(x1,x2,x3,x4,x5,x6) - Prb(x1,x2,x3,x4,x5,x6))))'),   \
+            'Wwhg'  : (['x1','x2','x3','x4','x5','x6'],'Wwh(x1,x2,x3,x4,x5,x6)*ALFAgt(x1,x2,x3,x4,x5,x6)'),\
+            'Wwhl'  : (['x1','x2','x3','x4','x5','x6'],'Wwh(x1,x2,x3,x4,x5,x6)*(1 - ALFAgt(x1,x2,x3,x4,x5,x6))'),	\
+            'Wr_pre': (['x1','x2','x3','x4','x5','x6'],'Kr*(1-0.2*Pbh(x1,x2,x3,x4,x5,x6)/Pr-0.8*(Pbh(x1,x2,x3,x4,x5,x6)/Pr)**2)'),		\
+            'Wr'    : (['x1','x2','x3','x4','x5','x6'],'max(0,Wr_pre(x1,x2,x3,x4,x5,x6))'),			\
+            'Pai'   : (['x1','x2','x3','x4','x5','x6'],'anular_pressure*x4'),     \
+            'ROai'  : (['x1','x2','x3','x4','x5','x6'],'Pai(x1,x2,x3,x4,x5,x6)/RT_over_M') ,                       \
+            'Wiv'   : (['x1','x2','x3','x4','x5','x6'],'Ka*sqrt(ROai(x1,x2,x3,x4,x5,x6)*(max(0,Pai(x1,x2,x3,x4,x5,x6) - Ptb(x1,x2,x3,x4,x5,x6))))')
+        }
+
+        dx = {
+            'x1': '(1 - E_par)*(Wwhg(x1,x2,x3,x4,x5,x6)) - Wg(x1,x2,x3,x4,x5,x6)',
+            'x2': 'E_par*(Wwhg(x1,x2,x3,x4,x5,x6)) + Wg(x1,x2,x3,x4,x5,x6) - Wgout(x1,x2,x3,x4,x5,x6)',
+            'x3': 'Wwhl(x1,x2,x3,x4,x5,x6) - Wlout(x1,x2,x3,x4,x5,x6)',
+            'x4': 'Wgc(x1,x2,x3,x4,x5,x6) - Wiv(x1,x2,x3,x4,x5,x6)',
+            'x5': 'Wr(x1,x2,x3,x4,x5,x6) * ALFAgw + Wiv(x1,x2,x3,x4,x5,x6) - Wwhg(x1,x2,x3,x4,x5,x6)',
+            'x6': 'Wr(x1,x2,x3,x4,x5,x6) * (1 - ALFAgw) - Wwhl(x1,x2,x3,x4,x5,x6)'
+        }
+
+        DSargs = args(name='FOWM')
+        DSargs.pars = parameters_dict
+        DSargs.varspecs = dx
+        DSargs.fnspecs = symbolFOWM
+        DSargs.ics = icdict
+        DSargs.pdomain = {'Ck': [2, 100]}
+        DSargs.xdomain = {'Ck': [2, 100]}
+
+        testDS = Generator.Vode_ODEsystem(DSargs)
+
+        # Configuração para o cálculo da bifurcação
+        PCargs = args(name='EQ1', type='EP-C')
+        PCargs.freepars = ['Ck']
+        PCargs.StepSize = 1e-1
+        PCargs.MaxNumPoints = 400
+        PCargs.MaxStepSize = 1e1
+        PCargs.LocBifPoints = 'all'
+        PCargs.StopAtPoints = 'B'
+        PCargs.SaveEigen = True
+        PCargs.verbosity = 2
+
+        PyCont = ContClass(testDS)
+        PyCont.newCurve(PCargs)
+
+        print('Computing bifurcation curve...')
+        start = perf_counter()
+        PyCont['EQ1'].forward()
+        PyCont['EQ1'].backward()
+        PyCont['EQ1'].backward()
+        PyCont['EQ1'].backward()
+        elapsed_time = perf_counter() - start
+        print(f'Done in {elapsed_time:.3f} seconds!')
+
+        # Extrair soluções da bifurcação
+        ssp_cont = np.array([
+            PyCont['EQ1'].sol['x1'],
+            PyCont['EQ1'].sol['x2'],
+            PyCont['EQ1'].sol['x3'],
+            PyCont['EQ1'].sol['x4'],
+            PyCont['EQ1'].sol['x5'],
+            PyCont['EQ1'].sol['x6']
+        ]).T
+
+        bifurcation_curve = FOWM(
+            np.arange(0, ssp_cont.shape[0]),
+            ssp_cont,
+            PyCont['EQ1'].sol['Ck']*0.01,
+            self.GL * self.fat_Wgc,
+            self.Pr,
+            self.Ps,
+            resample=True
+        )
+
+        choke_Hopff = PyCont['EQ1'].getSpecialPoint('H1')['Ck']
+        
+        fowm_Hopf = bifurcation_curve[bifurcation_curve.Choke == choke_Hopff]
+
+        return ssp_cont, bifurcation_curve, fowm_Hopf, choke_Hopff

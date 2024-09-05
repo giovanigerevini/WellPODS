@@ -1,7 +1,7 @@
 import numpy as np
+from functools import partial
 from scipy.integrate import odeint # Import odeint
 from PyDSTool import *
-
 
 class FOWM:
     """
@@ -26,7 +26,7 @@ class FOWM:
             setattr(self, key, value)
 
         # Parâmetros de ajuste obrigatórios
-        self.required_adjust_params = ['mlstill', 'Cg', 'Cout', 'Veb', 'E', 'Kw', 'Ka', 'Kr', 'Vr']
+        self.required_adjust_params = ['mlstill', 'Cg', 'Cout', 'Veb', 'Epsilon', 'Kw', 'Ka', 'Kr', 'Vr']
         
         # Inicializa os parâmetros de ajuste como None se não forem fornecidos
         for param in self.required_adjust_params:
@@ -221,8 +221,8 @@ class FOWM:
             Wiv  = self.Ka * np.sqrt(ROai * max(0, (Pai - Ptb)))
             
             # Retorno dos valores do sistema dinâmico
-            dx1 = (1 - self.E) * ALFAgt * Wwh - Wg
-            dx2 = self.E * Wwh * ALFAgt + Wg - ALFAg * Wout
+            dx1 = (1 - self.Epsilon) * ALFAgt * Wwh - Wg
+            dx2 = self.Epsilon * Wwh * ALFAgt + Wg - ALFAg * Wout
             dx3 = Wwh * (1 - ALFAgt) - (1 - ALFAg) * Wout
             dx4 = Wgc - Wiv
             dx5 = Wr * self.ALFAgw + Wiv - Wwh * ALFAgt
@@ -256,14 +256,18 @@ class FOWM:
 
         return x_solution, internal_vars
 
-    def build_bifurcation(self):
+    def build_bifurcation(self, input = 'Ck', out = 'Ppdg', range_values = [2,100]):
         """
         Realiza uma análise de bifurcação do modelo FOWM para identificar mudanças qualitativas
         no comportamento dinâmico do sistema em função do parâmetro de controle.
 
+        Args:
+            input (str): Nome da entrada para bifurcação ('Ck', 'GL', 'Ps', ou 'Pr').
+            range_values (list): Intervalo de valores para o parâmetro de entrada.
+
         Returns:
             ssp_cont: Soluções estacionárias do modelo durante a bifurcação.
-            fowm_curve: Dados da curva de bifurcação.
+            bifurcation_curve: Dados da curva de bifurcação.
             fowm_Hopf: Dados relacionados ao ponto de Hopf bifurcação, se aplicável.
             hopf_params: Parâmetros associados aos pontos de Hopf.
         """
@@ -276,17 +280,17 @@ class FOWM:
             'L', 'Lt', 'La', 'D', 'Dt', 'Da', 'teta', 'Hvgl', 'Hpdg', 'Ht', 'A', 'Vt', 'Va',
             'RT_over_M', 'fat_Wgc', 'g_sin_teta_over_A',
             'Romres_g_deltaGlPdg', 'Romres_g_deltaWellPdg', 'anular_pressure',
-            'mlstill', 'Cg', 'Cout', 'Veb', 'E', 'Kw', 'Ka', 'Kr', 'Vr',
+            'mlstill', 'Cg', 'Cout', 'Veb', 'Epsilon', 'Kw', 'Ka', 'Kr', 'Vr',
             'Ck', 'GL', 'Ps', 'Pr'
         ]
-
+        
         parameters = [
             self.R, self.g, self.T, self.M, self.Rol, self.ALFAgw, self.Romres,
             self.L, self.Lt, self.La, self.D, self.Dt, self.Da, self.teta, self.Hvgl, self.Hpdg, self.Ht, self.A, self.Vt, self.Va,
             self.RT_over_M, self.fat_Wgc, self.g_sin_teta_over_A,
             self.Romres_g_deltaGlPdg, self.Romres_g_deltaWellPdg, self.anular_pressure,
-            self.mlstill, self.Cg, self.Cout, self.Veb, self.E, self.Kw, self.Ka, self.Kr, self.Vr,
-            self.Ck, self.GL, self.Ps, self.Pr
+            self.mlstill, self.Cg, self.Cout, self.Veb, self.Epsilon, self.Kw, self.Ka, self.Kr, self.Vr,
+            self.Ck0, self.GL0, self.Ps0, self.Pr0
         ]
 
         parameters_dict = dict(zip(parameters_name, parameters))
@@ -327,8 +331,8 @@ class FOWM:
         }
 
         dx = {
-            'x1': '(1 - E_par)*(Wwhg(x1,x2,x3,x4,x5,x6)) - Wg(x1,x2,x3,x4,x5,x6)',
-            'x2': 'E_par*(Wwhg(x1,x2,x3,x4,x5,x6)) + Wg(x1,x2,x3,x4,x5,x6) - Wgout(x1,x2,x3,x4,x5,x6)',
+            'x1': '(1 - Epsilon)*(Wwhg(x1,x2,x3,x4,x5,x6)) - Wg(x1,x2,x3,x4,x5,x6)',
+            'x2': 'Epsilon*(Wwhg(x1,x2,x3,x4,x5,x6)) + Wg(x1,x2,x3,x4,x5,x6) - Wgout(x1,x2,x3,x4,x5,x6)',
             'x3': 'Wwhl(x1,x2,x3,x4,x5,x6) - Wlout(x1,x2,x3,x4,x5,x6)',
             'x4': 'Wgc(x1,x2,x3,x4,x5,x6) - Wiv(x1,x2,x3,x4,x5,x6)',
             'x5': 'Wr(x1,x2,x3,x4,x5,x6) * ALFAgw + Wiv(x1,x2,x3,x4,x5,x6) - Wwhg(x1,x2,x3,x4,x5,x6)',
@@ -340,14 +344,14 @@ class FOWM:
         DSargs.varspecs = dx
         DSargs.fnspecs = symbolFOWM
         DSargs.ics = icdict
-        DSargs.pdomain = {'Ck': [2, 100]}
-        DSargs.xdomain = {'Ck': [2, 100]}
+        DSargs.pdomain = {input: range_values}
+        DSargs.xdomain = {input: range_values}
 
         testDS = Generator.Vode_ODEsystem(DSargs)
 
         # Configuração para o cálculo da bifurcação
         PCargs = args(name='EQ1', type='EP-C')
-        PCargs.freepars = ['Ck']
+        PCargs.freepars = [input]
         PCargs.StepSize = 1e-1
         PCargs.MaxNumPoints = 400
         PCargs.MaxStepSize = 1e1
@@ -378,18 +382,58 @@ class FOWM:
             PyCont['EQ1'].sol['x6']
         ]).T
 
-        bifurcation_curve = FOWM(
-            np.arange(0, ssp_cont.shape[0]),
-            ssp_cont,
-            PyCont['EQ1'].sol['Ck']*0.01,
-            self.GL * self.fat_Wgc,
-            self.Pr,
-            self.Ps,
-            resample=True
-        )
+        # Função base para criar a bifurcação
+        def configure_bifurcation_curve(sol, ck0, gl0, pr0, ps0, extra=None):
+            if internal_vars_requested:
+                all_internal_vars = self.predict_y(
+                    tArray_sim,
+                    x_solution,
+                    z_sim,
+                    Wgc_sim,
+                    Pr_sim,
+                    Ps_sim
+                )
 
-        choke_Hopff = PyCont['EQ1'].getSpecialPoint('H1')['Ck']
-        
-        fowm_Hopf = bifurcation_curve[bifurcation_curve.Choke == choke_Hopff]
+            # Filtrar apenas as variáveis internas solicitadas
+            internal_vars = {var: all_internal_vars[var] for var in internal_vars_requested if var in all_internal_vars}
+            # Adiciona o extra à bifurcation_curve se aplicável
+            curve = self.predict_y(
+                np.arange(0, ssp_cont.shape[0]),
+                ssp_cont,
+                ck0,
+                gl0,
+                pr0,
+                ps0,
+            )
+            if extra:
+                curve[extra] = sol[extra]
+            return curve
 
-        return ssp_cont, bifurcation_curve, fowm_Hopf, choke_Hopff
+        # Mapeamento de entradas para configurações dinâmicas
+        configure_map = {
+            'Ck': lambda sol: configure_bifurcation_curve(sol, sol['Ck'] * 0.01, self.GL0 * self.fat_Wgc, self.Pr0, self.Ps0),
+            'GL': lambda sol: configure_bifurcation_curve(sol, self.Ck0, sol['GL'] * self.fat_Wgc, self.Pr0, self.Ps0),
+            'Ps': lambda sol: configure_bifurcation_curve(sol, self.Ck0, self.GL0 * self.fat_Wgc, self.Pr0, sol['Ps']),
+            'Pr': lambda sol: configure_bifurcation_curve(sol, self.Ck0, self.GL0 * self.fat_Wgc, sol['Pr'], self.Ps0)
+        }
+
+        # Verifica se o input é um dos padrões ou um parâmetro válido no modelo
+        if input in configure_map:
+            bifurcation_curve = configure_map[input](PyCont['EQ1'].sol)
+        elif input in parameters_name:
+            # Caso o input seja um parâmetro válido no modelo, adicionar uma nova coluna
+            bifurcation_curve = configure_bifurcation_curve(
+                PyCont['EQ1'].sol,
+                self.Ck0,
+                self.GL0 * self.fat_Wgc,
+                self.Pr0,
+                self.Ps0,
+                extra=input
+            )
+        else:
+            raise ValueError(f"Parâmetro de entrada '{input}' não reconhecido ou inválido.")
+
+        choke_Hopff = PyCont['EQ1'].getSpecialPoint('H1')[input] if input in PyCont['EQ1'].getSpecialPoint('H1') else None
+        fowm_Hopf = bifurcation_curve[bifurcation_curve.Choke == choke_Hopff] if choke_Hopff else None
+
+        return ssp_cont, bifurcation_curve, fowm_Hopf

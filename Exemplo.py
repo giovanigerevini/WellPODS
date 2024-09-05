@@ -6,6 +6,9 @@ from bibgolfadas.Tools import transformar_entrada, normalizar_zscore, generate_d
 import numpy as np
 import pandas as pd
 
+from importlib import reload
+bibgolfadas = reload(bibgolfadas)
+
 # Passo 1: Definir os parâmetros do poço
 well_params = {
     'ALFAgw': 0.0188,
@@ -29,17 +32,16 @@ well_params = {
     'Cg': 2.3460789880222731e-05,
     'Cout': 5.8137935670717683e-03,
     'Veb': 9.0159519351419036e+01,
-    'E': 3.5822558226225404e-02,
+    'Epsilon': 3.5822558226225404e-02,
     'Kw': 1.0212053760436238e-03,
     'Ka': 1.7666249329670688e-04,
     'Kr': 2.4671647300003357e+02,
     'Vr': 4497*np.pi*0.1524*0.1524/4,
-    'ssp0': [8912.66572827, 
-            2222.73185827, 
-            20819.83016621, 
-            2193.6829795, 
-            1425.25347021, 
-            13349.18978217],
+    'ssp0': [8912.57167477, 2222.72000107, 20819.60180571, 2193.67929049, 1425.20603112,13349.50962993],
+    'Ck0': 5,
+    'GL0': 1.65e5,  # Gaslift inflow [m³/d]
+    'Ps0' : 1013250,  # Separator pressure [Pa]
+    'Pr0' : 22500000, # Reservoir Pressure [Pa]
 }
 
 # Passo 2: Inicializar o poço
@@ -60,7 +62,7 @@ Ps = 1013250  # Separator pressure [Pa]
 Pr = 2.25e7   # Reservoir Pressure [Pa]
 
 # Gerar a função de entrada dinâmica da choke
-z_samp = [5,5,8,10,10,11,12,12,12,13,15,14,14,13,17,15,18,18,20,20,19,19,19,21,17,15,13,15,17]
+z_samp = [5,5]#,8,10,10,11,12,12,12,13,15,14,14,13,17,15,18,18,20,20,19,19,19,21,17,15,13,15,17]
 time_step = 10 # horas
 
 u_sim, tArray_sim = generate_dynamic_input([z_samp,z_samp], time_step)
@@ -81,6 +83,8 @@ axs.plot(Y_train/1.e5)
 axs_ = axs.twinx()
 axs_.plot(X_train*100,'r')
 plt.show()
+
+modelo_fowm.build_bifurcation()
 
 X_train_resampled = transformar_entrada(X_train, freq_atual='1s', freq_destino='1min')
 X_train_resampled_lagged = transformar_entrada(X_train, freq_atual='1s', freq_destino='1min',num_lags=10)

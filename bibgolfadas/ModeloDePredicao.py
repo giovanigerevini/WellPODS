@@ -27,6 +27,8 @@ class ModeloDePredicao(ABC):
         self.model = None  # O modelo subjacente, pode ser um objeto de ML ou modelo físico
         self.trained = False  # Flag para indicar se o modelo foi treinado
         self.history = None  # Histórico de treinamento e métricas
+        self.bifurcation_curve = None  # Novo atributo para armazenar a curva de bifurcação
+        self.Hopf = None          # Novo atributo para armazenar o ponto de Hopf
 
     @abstractmethod
     def build(self):
@@ -35,7 +37,6 @@ class ModeloDePredicao(ABC):
         """
         pass
     
-
     @abstractmethod
     def train(self, X_train, y_train, X_val=None, y_val=None):
         """
@@ -124,9 +125,8 @@ class FOWMModel(ModeloDePredicao):
         """
         if not self.trained:
             raise ValueError("O modelo deve ser treinado antes de realizar predições.")
-        ssp_cont, bifurcation_curve, fowm_Hopf, choke_Hopff = self.model.build_bifurcation()
-        return ssp_cont, bifurcation_curve, fowm_Hopf, choke_Hopff
-
+        ssp_cont, self.bifurcation_curve, self.Hopf = self.model.build_bifurcation()
+        
     def save(self, path):
         """
         Salva o estado atual do modelo FOWM.

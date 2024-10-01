@@ -12,6 +12,8 @@ from scipy.interpolate import interp1d
 from pyswarms.single import GlobalBestPSO
 import numpy as np
 from sklearn.preprocessing import StandardScaler
+import pickle
+import json
 
 import bibgolfadas.ModeloDePredicao as ModeloDePredicao
 
@@ -44,7 +46,7 @@ ABL56 = {
     'Veb': 53.3003,
     'Vr': 81.601,
 }
-
+ 
 class Well:
     '''
     Classe para construção dos poços
@@ -207,3 +209,29 @@ class Well:
             resultados[nome_modelo] = erro
         return resultados
 
+    def save(self, filepath):
+        """
+        Salva o objeto Well em um arquivo JSON.
+
+        Args:
+            filepath: Caminho do arquivo onde o objeto será salvo.
+        """
+        with open(filepath, 'w') as file:
+            json.dump({'config': self.config, 'modelos': list(self.modelos.keys())}, file, indent=4)
+
+    @staticmethod
+    def load(filepath):
+        """
+        Carrega um objeto Well de um arquivo JSON.
+
+        Args:
+            filepath: Caminho do arquivo de onde o objeto será carregado.
+
+        Returns:
+            Objeto Well carregado.
+        """
+        with open(filepath, 'r') as file:
+            data = json.load(file)
+            well = Well(**data['config'])
+            well.modelos = {nome: None for nome in data['modelos']}  # Placeholder for models
+            return well

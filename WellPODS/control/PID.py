@@ -1,6 +1,6 @@
 class PID:
     """
-    Descrevre a classe
+    Classe para implementar um controlador PID para uma válvula choke.
     """
     def __init__(self, kp, ki, kd, type='ISA'):
         """
@@ -10,6 +10,7 @@ class PID:
             kp: Ganho proporcional.
             ki: Ganho integral.
             kd: Ganho derivativo.
+            type: Tipo de controlador (ex.: 'ISA').
         """
         self.kp = kp
         self.ki = ki
@@ -18,25 +19,25 @@ class PID:
         self.prev_error = 0
         self.type = type
 
-    def calcular_velocidade(self, setpoint, medida_atual):
+    def calcular_sinal(self, setpoint, medida_atual):
         """
-        Calcula a nova velocidade usando o controlador PID.
+        Calcula o sinal de controle para a válvula choke.
         
         Args:
-            setpoint: Valor desejado.
+            setpoint: Valor desejado (setpoint).
             medida_atual: Valor atual medido.
             
         Returns:
-            Novo valor de velocidade.
+            Sinal de controle para a válvula choke.
         """
         erro = setpoint - medida_atual
         self.integral += erro
         derivativo = erro - self.prev_error
 
         # Controlador PID
-        velocidade = self.kp * erro + self.ki * self.integral + self.kd * derivativo
+        sinal_controle = self.kp * erro + self.ki * self.integral + self.kd * derivativo
 
         # Atualiza o erro anterior
         self.prev_error = erro
 
-        return velocidade
+        return sinal_controle

@@ -3,15 +3,56 @@ import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
-import re
+
+import warnings
+warnings.filterwarnings('ignore')
 
 class CLAV():
-    
+    """
+    =============================================================================
+
+                    Classe para Classificação de Variáveis
+
+    versão 3.0
+    @giovani.gerevini
+    15/12/2024
+    =============================================================================
+
+    Entradas:
+        modelo           --> Arquivo txt do modelo a ser classificado, .txt
+                            obs.: separar operadores com espaço vazio.
+                                ex.: a = b * x + sqrt( d ) / e
+        variaveisMedidas --> Vetor com as variáveis medidas, str
+        constatesModelo  --> Vetor com as constatnes do modelo, str
+        visualiza        --> Se desejar visualizar as matrizes de ocorrência, 1.
+                            (Default = None)
+        log              --> Se desejar visualizar os logs da classificação, 1. 
+                            (Default = None)
+        visualiza        --> Se desejar visualizar relatório final da classificação, 1. 
+                            (Default = None)        
+
+    Saídas:
+        equacoes         --> Dataframe das equações do modelo
+        variaveis        --> vetor com todas as variáveis do modelo
+        vNM              --> vetor com as Variáveis Não Medidas do modelo
+        matrizOcorrencia --> matriz de ocorrencia inicial do modelo
+        matrizdeOcorrenciaFinal --> matriz de ocorrencia final, após classificação 
+                                    de variáveis
+        vNMO             --> DataFrame com as Variáveis Não Medidas Observáveis 
+                            pelo modelo e as respectivas equações determinantes de
+                            cada variável
+        vC               --> vetor com as variáveis de corte
+        vI               --> vetor com as variáveis Indetermináveis pelo modelo
+        gS               --> grau de sobredeterminação do modelo
+        eNU              --> Equações não utiliza do modelo
+        
+    """
+
     def __init__(self,):   
         # Dicionário de operadores de escritas dos modelos. Pode ser modificado ao carregar a classe.
         self.operadores = ['=', '+', '-', '/', '*', '(', ')', 'sqrt', ';', '))', '((', 'sqrt(', 'sen(']
              
-        self.modelo = '', 
+        self.modelo = None 
         self.variaveisMedidas = None
         self.constantesModelo = None
         self.equacoes = None
@@ -128,11 +169,15 @@ class CLAV():
 
         self.equacoes = Equacoes
         self.variaveis = variaveis
+        self.variaveisMedidas = variaveisMedidas
         self.variaveisNaoMedidas = variaveisNaoMedidas
+        
+        return Equacoes, variaveis, variaveisNaoMedidas
 
-    def visualiza_matriz(self, matrizOcorrencia):
+    def Visualiza_Matriz(self, matrizOcorrencia):
         # sns.set(rc={'figure.figsize':(len(variaveis)*2, len(equacoes)*1)})
         sns.set(rc={'figure.figsize':(18,12)})
+        sns.set(font_scale=2)
         # Ordena a matriz de acordo com o índice
         matrizOcorrenciaVisualiza = matrizOcorrencia.sort_index(axis=1)
         
@@ -172,7 +217,7 @@ class CLAV():
                     None
         
         if visualiza:
-            self.visualiza_matriz(matrizOcorrencia)
+            self.Visualiza_Matriz(matrizOcorrencia)
             
         return matrizOcorrencia    
 
@@ -189,13 +234,13 @@ class CLAV():
         for var in self.variaveisMedidas:
             if var in novamatrizOcorrencia.columns:
                 # Define a coluna correspondente à variável medida com zeros
-                novamatrizOcorrencia[var] = 0.0
+                novamatrizOcorrencia[var] = 0
             else:
                 print(f"Variável '{var}' não encontrada na matriz de ocorrência. Revise a lista de variáveis medidas.")
 
         # Se fornecido, chama a função de visualização
         if visualiza:
-            self.visualiza_matriz(visualiza)
+            self.Visualiza_Matriz(novamatrizOcorrencia)
 
         return novamatrizOcorrencia
    
@@ -277,7 +322,7 @@ class CLAV():
         
         # Visualiza a matriz resultante (se ativado)
         if visualiza:
-            self.visualiza_matriz(novaMatrizOcorrencia, visualiza)
+            self.Visualiza_Matriz(novaMatrizOcorrencia)
             plt.show()
         
         return novaMatrizOcorrencia
@@ -337,6 +382,7 @@ class CLAV():
             print(variaveisNMedidasObservaveis)
       
     def Variaveis_Redundantes():
+        # Elaborar método determinação das variáveis redundantes [TODO]   
         pass
     
     def Grau_Sobredeterminacao(self, log=None):
@@ -368,7 +414,7 @@ class CLAV():
         >>> grau, equacoesNaoUtilizadas = Grau_Sobredeterminacao(variaveisNMedidasObservaveis, Equacoes, log=True)
         """
         # Lista de todas as equações disponíveis no sistema
-        equacoesNUtilizadas = list(self.Equacoes.index.values)
+        equacoesNUtilizadas = list(self.equacoes.index.values)
         
         # Lista de equações já utilizadas, extraídas de variaveisNMedidasObservaveis
         equacoesUtilizadas = list(self.variaveisNMedidasObservaveis['eq'].values)
@@ -395,7 +441,7 @@ class CLAV():
         self.grauSobredeterminacao = grauSobredeterminacao
         self.equacoesNUtilizadas = equacoesNUtilizadas
 
-    def Escolha_Variavel_Corte(self, matrizOcorrencia, visualiza=None, log=None):
+    def Escolha_Variavel_Corte(self, matrizOcorrencia, visualiza=None, log=None, metodo_escolha='manual'):
         """
         Escolhe a variável de corte com base na matriz de ocorrência e atualiza a matriz para refletir essa escolha.
         
@@ -433,11 +479,36 @@ class CLAV():
         novaMatrizOcorrenciaAux = novaMatrizOcorrencia.replace(2, 0)  # Substitui valores '2' por '0' na matriz auxiliar
         
         # Identifica a coluna com a maior soma (variável de maior ocorrência)
-        colunaMaiorOcorrencia = novaMatrizOcorrenciaAux.sum(axis=0)
-        colunaMaiorOcorrencia = colunaMaiorOcorrencia[colunaMaiorOcorrencia == colunaMaiorOcorrencia.max()]
+        colunaMaiorOcorrencia   = matrizOcorrencia.sum(axis=0)[novaMatrizOcorrenciaAux.sum(axis=0) == novaMatrizOcorrenciaAux.sum(axis=0).max()]
         
-        # Seleciona a primeira variável com maior ocorrência como variável de corte
-        variavelDeCorte = colunaMaiorOcorrencia.index[0]
+        # Verifica se há mais de uma variável com a maior ocorrência
+        if len(colunaMaiorOcorrencia) == 1:
+            # Se existe apenas uma, seleciona ela
+            variavelDeCorte_escolhida = colunaMaiorOcorrencia.index[0]
+        else:
+            # Se houver mais de uma variável com a maior ocorrência, solicita a escolha 
+            if metodo_escolha == 'manual':
+                # Solicita a escolha manual da variável de corte
+                print('Lista de Variáveis: ')
+                print(colunaMaiorOcorrencia.index.values)
+                variavelDeCorte_escolhida = None
+                                
+                while variavelDeCorte_escolhida is None:
+                    variavelDeCorte_escolhida = input("Qual a variável de corte escolhida? ")
+                    try:
+                        if variavelDeCorte_escolhida in colunaMaiorOcorrencia.index.values:
+                            print('Variavel escolhida: ' + variavelDeCorte_escolhida)
+                        else:
+                            variavelDeCorte_escolhida = None
+                            print('Escolha novamente')
+                    except:            
+                        print('Erro')
+            else:
+                ## Entrar em uma metodologia de análise combinatória - [TODO]
+                variavelDeCorte_escolhida = colunaMaiorOcorrencia.index[0] # Por enquanto escolhe a primeira variável
+        
+        # Determina variável de corte
+        variavelDeCorte = variavelDeCorte_escolhida
         
         # Marca a variável de corte na matriz de ocorrência substituindo 1 por 2
         novaMatrizOcorrencia[variavelDeCorte] = novaMatrizOcorrencia[variavelDeCorte].replace(1, 2)
@@ -447,7 +518,7 @@ class CLAV():
         
         # Visualiza a matriz de ocorrência atualizada, se solicitado
         if visualiza:
-            self.visualiza_matriz(novaMatrizOcorrencia)
+            self.Visualiza_Matriz(novaMatrizOcorrencia)
         
         # Logging opcional para exibir a variável de corte escolhida
         if log:
@@ -525,7 +596,7 @@ class CLAV():
 
         # Visualiza a matriz resultante, se solicitado
         if visualiza:
-            self.visualiza_matriz(matrizOcorrencia_aux)
+            self.Visualiza_Matriz(matrizOcorrencia_aux)
         
         # Exibe mensagem de finalização
         if log:
@@ -542,7 +613,7 @@ class CLAV():
 
         return matrizOcorrencia_aux
 
-    def elimina_Variavel_Corte(self, matrizOcorrencia, variavelDeCorte, log=None, visualiza=None):
+    def Elimina_Variavel_Corte(self, matrizOcorrencia, variavelDeCorte, log=None, visualiza=None):
         variaveisdeCorteDeterminaveis = []
         novaMatrizOcorrencia = matrizOcorrencia.copy()
 
@@ -592,7 +663,7 @@ class CLAV():
         
         # Visualiza a matriz resultante, se solicitado
         if visualiza:
-            self.visualiza_matriz(novaMatrizOcorrencia)
+            self.Visualiza_Matriz(novaMatrizOcorrencia)
             
         return novaMatrizOcorrencia
         
@@ -629,7 +700,7 @@ class CLAV():
             print("Etapa 1 e 2: Formulação do modelo e identificação preliminar das variáveis")
             print('==========================================')
             
-        equacoes, variaveis, vNM  = Formulacao_Modelo(modelo, variaveisMedidas,constantesModelo, log)
+        equacoes, variaveis, vNM  = self.Formulacao_Modelo(modelo, variaveisMedidas,constantesModelo, log)
         
         # 3 Construção da Matriz de Ocorrência    
         if log:
@@ -638,7 +709,7 @@ class CLAV():
             print('==========================================')
         if visualiza:
             print("Matriz de Ocorrencia")
-        matrizOcorrenciaOriginal = Matriz_de_Ocorrencia(equacoes, variaveis, None, visualiza)
+        matrizOcorrenciaOriginal = self.Matriz_de_Ocorrencia(equacoes, variaveis, None, visualiza)
         
         # 4 Validação da Matriz de Ocorrência
         if log:
@@ -648,7 +719,7 @@ class CLAV():
 
         if visualiza:
             print("Matriz de Ocorrencia Validada")
-        matrizOcorrenciaValidada = Identifica_Variaveis_Medidas(matrizOcorrenciaOriginal, variaveisMedidas, equacoes, None, visualiza)
+        matrizOcorrenciaValidada = self.Identifica_Variaveis_Medidas(matrizOcorrenciaOriginal, variaveisMedidas, equacoes, None, visualiza)
         
         print('Iniciando Classificação de Variáveis.....') 
 
@@ -659,7 +730,7 @@ class CLAV():
             print('==========================================')
 
         vNMO = pd.DataFrame(data=[],columns=['var','eq'])
-        MatrizOcorrenciaPreliminar, vNMO = Determina_Ordem_Preliminar(matrizOcorrenciaValidada, None, equacoes, visualiza, log)    
+        MatrizOcorrenciaPreliminar, vNMO = self.Determina_Ordem_Preliminar(matrizOcorrenciaValidada, None, equacoes, visualiza, log)    
         
         # 6 Classificando as Variáveis
         if log:
@@ -667,7 +738,7 @@ class CLAV():
             print("Etapa 6 : Determinação de Ordem Preliminar de Procedência")
             print('==========================================')
         
-        vI = Classificacao_Variaveis(variaveis, variaveisMedidas, vNMO, log)
+        vI = self.Classificacao_Variaveis(variaveis, variaveisMedidas, vNMO, log)
         
         # 7 Determinação do Grau de Sobredeterminação  
         if log:
@@ -675,7 +746,7 @@ class CLAV():
             print("Etapa 7 : Determinação Preliminar de Sobredeterminação")
             print('==========================================')
     
-        gS, eNU = Grau_Sobredeterminacao(vNMO, equacoes, log)
+        gS, eNU = self.Grau_Sobredeterminacao(vNMO, equacoes, log)
         
         # 8 Escolha da Variável de Corte (iteração)
         if log:
@@ -683,7 +754,7 @@ class CLAV():
             print("Etapa 8 : Escolha da Variável de Corte (iteração)")
             print('==========================================')
     
-        MatrizOcorrenciaVariavesiCorte, vNMO, vC, gS, eNU = Iteracao_de_Escolha_Variaveis_Corte(MatrizOcorrenciaPreliminar, 
+        MatrizOcorrenciaVariavesiCorte, vNMO, vC, gS, eNU = self.Iteracao_de_Escolha_Variaveis_Corte(MatrizOcorrenciaPreliminar, 
                                                                                                 equacoes, vNMO, [], 
                                                                                                 visualiza, log)    
         
@@ -693,10 +764,10 @@ class CLAV():
             print("Etapa 9 : Eliminando Variável de Corte (iteração)")
             print('==========================================')
         
-        matrizdeOcorrenciaFinal, vNMO, vCD, vCI = Elimina_Variavel_Corte(MatrizOcorrenciaVariavesiCorte, vNMO, vC, gS, equacoes, log)    
+        matrizdeOcorrenciaFinal, vNMO, vCD, vCI = self.Elimina_Variavel_Corte(MatrizOcorrenciaVariavesiCorte, vNMO, vC, gS, equacoes, log)    
         
         if visualiza:
-            visualiza_matriz(matrizdeOcorrenciaFinal, equacoes, vNMO, 1)
+            self.Visualiza_Matriz(matrizdeOcorrenciaFinal, equacoes, vNMO, 1)
         
         # 10 Classificação Final
         if log:
@@ -704,9 +775,9 @@ class CLAV():
             print("Etapa 10 : Classificação Final")
             print('==========================================')
 
-        vI = Classificacao_Variaveis(variaveis, variaveisMedidas, vNMO, log)
+        vI = self.Classificacao_Variaveis(variaveis, variaveisMedidas, vNMO, log)
         
-        gS, eNU = Grau_Sobredeterminacao(vNMO, equacoes, log)
+        gS, eNU = self.Grau_Sobredeterminacao(vNMO, equacoes, log)
         
         print('Classificação Terminada.....') 
 
@@ -725,7 +796,7 @@ class CLAV():
                 print('Modelo: ' + constantesModelo)
             except:
                 None
-            visualiza_matriz(matrizOcorrenciaOriginal, equacoes, vNMO, 1) 
+            self.Visualiza_Matriz(matrizOcorrenciaOriginal, equacoes, vNMO, 1) 
             print('===================================')
             print('Resultados: ')
             print('===================================')
@@ -734,7 +805,7 @@ class CLAV():
             print("Número de Variáveis Não Medidas: " + str(len(vNM)))
             print("Variaveis Não Medidas:")
             print(vNM)  
-            visualiza_matriz(matrizOcorrenciaValidada, equacoes, vNMO, 1) 
+            self.Visualiza_Matriz(matrizOcorrenciaValidada, equacoes, vNMO, 1) 
             print('===================================')
             print("Número de Variáveis Não Medidas Observáveis: " + str(len(vNMO)))
             print("Variaveis Variáveis Não Medidas Observáveis:")
@@ -748,7 +819,7 @@ class CLAV():
             print(vI)
             print('===================================')
             print('Matriz de Ocorrência Final')
-            visualiza_matriz(matrizdeOcorrenciaFinal, equacoes, vNMO, 1) 
+            self.Visualiza_Matriz(matrizdeOcorrenciaFinal, equacoes, vNMO, 1) 
             print(' ')
             print(' ')
             print(' ')

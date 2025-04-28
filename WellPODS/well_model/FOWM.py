@@ -256,7 +256,7 @@ class FOWM:
 
         return x_solution, internal_vars
 
-    def build_bifurcation(self, input = 'Ck', out = 'Ppdg', range_values = [2,100]):
+    def build_bifurcation(self, input = 'Ck', out = 'Ppdg', range_values = [2,100], internal_vars_requested=None):
         """
         Realiza uma análise de bifurcação do modelo FOWM para identificar mudanças qualitativas
         no comportamento dinâmico do sistema em função do parâmetro de controle.
@@ -383,7 +383,7 @@ class FOWM:
         ]).T
 
         # Função base para criar a bifurcação
-        def configure_bifurcation_curve(sol, ck0, gl0, pr0, ps0, extra=None):
+        def configure_bifurcation_curve(sol, ck0, gl0, pr0, ps0, internal_vars_requested=0, extra=None):
             if internal_vars_requested:
                 all_internal_vars = self.predict_y(
                     tArray_sim,

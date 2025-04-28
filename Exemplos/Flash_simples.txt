@@ -1,0 +1,6 @@
+F1 = F2 + F3
+F1 * y1l = F2 * y12 + F3 * y13 
+F1 * y2l = F2 * y22 + F3 * y23
+y1l + y2l = y12 + y22 = y13 + y23 
+y13 = n * y12 * P1_sat / P
+y23 = n * y22 * P2_sat / P

@@ -1,8 +1,8 @@
-class Controlador:
+class PID:
     """
     Descrevre a classe
     """
-    def __init__(self, kp, ki, kd):
+    def __init__(self, kp, ki, kd, type='ISA'):
         """
         Inicializa o controlador PID.
         
@@ -16,6 +16,7 @@ class Controlador:
         self.kd = kd
         self.integral = 0
         self.prev_error = 0
+        self.type = type
 
     def calcular_velocidade(self, setpoint, medida_atual):
         """

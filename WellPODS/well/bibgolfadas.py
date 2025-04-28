@@ -15,7 +15,7 @@ from sklearn.preprocessing import StandardScaler
 import pickle
 import json
 
-import bibgolfadas.ModeloDePredicao as ModeloDePredicao
+import WellPODS.well_model.ModeloDePredicao as ModeloDePredicao
 
 # WELL A - ABL56
 ABL56 = {

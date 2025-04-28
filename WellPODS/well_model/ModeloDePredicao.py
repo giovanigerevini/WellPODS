@@ -1,4 +1,4 @@
-import bibgolfadas.FOWM as FOWM
+import WellPODS.well_model.FOWM as FOWM
 import numpy as np
 import tensorflow as tf
 

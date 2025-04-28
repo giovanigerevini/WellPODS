@@ -1,13 +1,9 @@
 # Importando as classes necessárias
 import matplotlib.pyplot as plt
-
-import bibgolfadas.bibgolfadas as bibgolfadas
-from bibgolfadas.Tools import transformar_entrada, normalizar_zscore, generate_dynamic_input
 import numpy as np
 import pandas as pd
-
-from importlib import reload
-bibgolfadas = reload(bibgolfadas)
+import WellPODS.well.bibgolfadas as bibgolfadas
+from WellPODS.utils.Tools import transformar_entrada, normalizar_zscore, generate_dynamic_input
 
 # Passo 1: Definir os parâmetros do poço
 well_params = {
@@ -62,7 +58,7 @@ Ps = 1013250  # Separator pressure [Pa]
 Pr = 2.25e7   # Reservoir Pressure [Pa]
 
 # Gerar a função de entrada dinâmica da choke
-z_samp = [5,5]#,8,10,10,11,12,12,12,13,15,14,14,13,17,15,18,18,20,20,19,19,19,21,17,15,13,15,17]
+z_samp = [5,5,8,10,10,11,12,12,12,13,15,14,14,13,17,15,18,18,20,20,19,19,19,21,17,15,13,15,17]
 time_step = 10 # horas
 
 u_sim, tArray_sim = generate_dynamic_input([z_samp,z_samp], time_step)
@@ -78,12 +74,27 @@ x_, y_ = modelo_fowm.model.predict(X_test, ['t','z','Ppdg'])
 X_train = pd.DataFrame(data={'z': y_['z']}, index=y_['t'])
 Y_train = pd.DataFrame(data={'Ppdg': y_['Ppdg']}, index=y_['t'])
 
-fig, axs = plt.subplots()
-axs.plot(Y_train/1.e5)
+# Plotando os dados de treinamento
+fig, axs = plt.subplots(figsize=(10, 6))
+# Convertendo o índice de segundos para horas
+indice_horas = Y_train.index / 3600
+
+axs.plot(indice_horas, Y_train / 1.e5, label='Ppdg (Normalizado)', color='blue')
+axs.set_xlabel('Tempo (horas)')
+axs.set_ylabel('Ppdg (x10^5 Pa)')
+axs.legend(loc='upper left')
+axs.grid(True)
+
+# Criando um segundo eixo y para os dados de entrada
 axs_ = axs.twinx()
-axs_.plot(X_train*100,'r')
+axs_.plot(indice_horas, X_train * 100, 'r', label='z (Normalizado)')
+axs_.set_ylabel('z (x100)')
+axs_.legend(loc='upper right')
+
+plt.title('Dados de Treinamento Normalizados')
 plt.show()
 
+# Gerando curva de equilíbrio
 modelo_fowm.build_bifurcation()
 
 X_train_resampled = transformar_entrada(X_train, freq_atual='1s', freq_destino='1min')
@@ -106,7 +117,6 @@ X_train_normalizado, Y_train_normalizado, scaler_X, scaler_Y = normalizar_zscore
 n_samples = X_train_normalizado.shape[0]  # Número de amostras
 # Redimensionando os dados de entrada
 X_train_normalizado = np.reshape(X_train_normalizado,(n_samples, 100, 1))
-
 
 poço.adicionar_modelo(nome_modelo='ModeloLSTM1', modelo_tipo='LSTM', **lstm_config_1)
 # Treina o modelo LSTM

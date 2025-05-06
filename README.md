@@ -3,6 +3,8 @@
 **WellPODS** is a modular dynamic simulator for offshore production wells, integrating simplified physical models and data-driven methods.  
 It enables fast, scalable, and reliable simulations for flow assurance, production optimization, and control applications.
 
+This repository is part of the development of the doctoral thesis in the Graduate Program in Chemical Engineering at COPPE/UFRJ.
+
 ---
 
 ### Features
@@ -13,7 +15,3 @@ It enables fast, scalable, and reliable simulations for flow assurance, producti
 
 ### Installation
 (Coming soon...)
-
-### License
-
-Developed during the Doctorate Program.

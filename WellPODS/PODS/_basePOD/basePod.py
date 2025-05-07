@@ -1,3 +1,5 @@
+import os
+import importlib
 import random
 
 class Input:
@@ -90,12 +92,12 @@ class Input:
         else:
             self.value += noise_function()
 
-class basePod:
-    def __init__(self, name, model=None, config=None):
+class basePOD:
+    def __init__(self, id, POD_type=None, model=None, config=None):
         """
         Classe genérica para representar um POD (ou módulo) no fluxo de simulação.
 
-        :param name: Nome do POD.
+        :param id: Nome do POD.
         :param input_class: Classe a ser usada para criar a entrada (deve ser uma subclasse de Input).
         :param input_data: Dados de entrada para o POD.
         :param output_data: Dados de saída do POD.
@@ -103,7 +105,7 @@ class basePod:
         :param config: Parâmetros de configuração do POD (dicionário).
         """
         
-        self.name = name
+        self.id = id
         self.model = model
         self.input_data = Input()
         self.output_data = None
@@ -150,7 +152,7 @@ if __name__ == "__main__":
         return [x * fator for x in input_data]
 
     # Criando um POD
-    pod = basePod(name="POD_Exemplo", model=exemplo_modelo, config={"fator": 2})
+    pod = basePOD(id="POD_Exemplo", model=exemplo_modelo, config={"fator": 2})
 
     # Definindo os dados de entrada
     pod.set_input([1, 2, 3, 4])

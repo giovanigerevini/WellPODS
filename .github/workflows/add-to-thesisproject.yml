@@ -1,0 +1,16 @@
+name: Add Issues to Backlog of @thesisproject
+
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  add-to-backlog:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Move issue to Backlog
+        uses: actions-ecosystem/action-add-project-card@c3f7b2e2b3b8e8c6b1a8f3d6e4c2c5e2f7a9d8e1
+        with:
+          project_url: https://github.com/users/giovanigerevini/projects/3
+          column_name: Backlog
+          github_token: ${{ secrets.GITHUB_TOKEN }}
